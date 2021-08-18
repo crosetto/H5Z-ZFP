@@ -7,8 +7,10 @@
 extern "C" {
 #endif
 
-extern int H5Z_zfp_initialize(void);
-extern int H5Z_zfp_finalize(void);
+extern int __declspec(dllexport) H5Z_zfp_initialize(void);
+extern int __declspec(dllexport) H5Z_zfp_finalize(void);
+
+extern void __declspec(dllexport) H5Z_zfp_enable_openmp(bool);
 
 #ifdef __cplusplus
 }

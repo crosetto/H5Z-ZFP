@@ -76,6 +76,8 @@ do                                                    \
 
 static int h5z_zfp_was_registered = 0;
 
+static bool h5z_zfp_enable_openmp = false;
+
 static size_t    H5Z_filter_zfp(unsigned int flags, size_t cd_nelmts,
                                 const unsigned int cd_values[],
                                 size_t nbytes, size_t *buf_size, void **buf);
@@ -98,7 +100,17 @@ const H5Z_class2_t H5Z_ZFP[1] = {{
 }};
 
 #ifdef H5Z_ZFP_AS_LIB
-int H5Z_zfp_initialize(void)
+void __declspec(dllexport) H5Z_zfp_enable_openmp(bool on)
+{
+    h5z_zfp_enable_openmp = on;
+}
+#else
+H5PL_type_t H5PLget_plugin_type(void) { return H5PL_TYPE_FILTER; }
+const void* H5PLget_plugin_info(void) { return H5Z_ZFP; }
+#endif
+
+#ifdef H5Z_ZFP_AS_LIB
+int __declspec(dllexport) H5Z_zfp_initialize(void)
 {
     if (H5Zfilter_avail(H5Z_FILTER_ZFP))
         return 1;
@@ -115,7 +127,7 @@ const void *H5PLget_plugin_info(void) {return H5Z_ZFP;}
 #ifndef H5Z_ZFP_AS_LIB
 static
 #endif
-int H5Z_zfp_finalize(void)
+int __declspec(dllexport) H5Z_zfp_finalize(void)
 {
     herr_t ret2 = 0;
     if (h5z_zfp_was_registered)
@@ -182,11 +194,11 @@ H5Z_zfp_can_apply(hid_t dcpl_id, hid_t type_id, hid_t chunk_space_id)
 
     if (ndims_used == 0 || ndims_used > max_ndims)
         H5Z_ZFP_PUSH_AND_GOTO(H5E_PLINE, H5E_BADVALUE, 0,
-#if ZFP_VERSION_NO < 0x0053
-            "chunk must have only 1...3 non-unity dimensions");
-#else
+//#if ZFP_VERSION_NO < 0x0053
+//            "chunk must have only 1...3 non-unity dimensions");
+//#else
             "chunk must have only 1...4 non-unity dimensions");
-#endif
+//#endif
 
     /* if caller is doing "endian targetting", disallow that */
     native_type_id = H5Tget_native_type(type_id, H5T_DIR_ASCEND);
@@ -213,7 +225,8 @@ H5Z_zfp_set_local(hid_t dcpl_id, hid_t type_id, hid_t chunk_space_id)
     unsigned int hdr_cd_values[H5Z_ZFP_CD_NELMTS_MAX];
     unsigned int flags = 0;
     herr_t retval = 0;
-    hsize_t dims[H5S_MAX_RANK], dims_used[H5S_MAX_RANK];
+    hsize_t dims[H5S_MAX_RANK];
+    uint dims_used[H5S_MAX_RANK];
     H5T_class_t dclass;
     zfp_type zt;
     zfp_field *dummy_field = 0;
@@ -260,7 +273,7 @@ H5Z_zfp_set_local(hid_t dcpl_id, hid_t type_id, hid_t chunk_space_id)
     for (i = 0; i < ndims; i++)
     {
         if (dims[i] <= 1) continue;
-        dims_used[ndims_used] = dims[i];
+        dims_used[ndims_used] = (uint)dims[i];
         ndims_used++;
     }
 
@@ -274,11 +287,11 @@ H5Z_zfp_set_local(hid_t dcpl_id, hid_t type_id, hid_t chunk_space_id)
         case 4: dummy_field = Z zfp_field_4d(0, zt, dims_used[3], dims_used[2], dims_used[1], dims_used[0]); break;
 #endif
         default: H5Z_ZFP_PUSH_AND_GOTO(H5E_PLINE, H5E_BADVALUE, 0,
-#if ZFP_VERSION_NO < 0x0053
-                     "chunks may have only 1...3 non-unity dims");
-#else
+//#if ZFP_VERSION_NO < 0x0053
+//                     "chunks may have only 1...3 non-unity dims");
+//#else
                      "chunks may have only 1...4 non-unity dims");
-#endif
+//#endif
     }
     if (!dummy_field)
         H5Z_ZFP_PUSH_AND_GOTO(H5E_RESOURCE, H5E_NOSPACE, 0, "zfp_field_Xd() failed");
@@ -550,8 +563,10 @@ H5Z_filter_zfp(unsigned int flags, size_t cd_nelmts,
 
         Z zfp_stream_set_mode(zstr, zfp_mode);
 
+        // Note: the current version of zfp doesn't allow parallel decompression with openmp: https://zfp.readthedocs.io/en/release0.5.4/execution.html
+		
         /* Do the ZFP decompression operation */
-        status = Z zfp_decompress(zstr, zfld);
+        status = (int)(Z zfp_decompress(zstr, zfld));
 
         /* clean up */
         Z zfp_field_free(zfld); zfld = 0;
@@ -610,6 +625,15 @@ H5Z_filter_zfp(unsigned int flags, size_t cd_nelmts,
             H5Z_ZFP_PUSH_AND_GOTO(H5E_RESOURCE, H5E_NOSPACE, 0, "bitstream open failed");
 
         Z zfp_stream_set_bit_stream(zstr, bstr);
+
+        if (h5z_zfp_enable_openmp)
+        {
+			/* optionally set parallel execution mode (openmp, cuda) */
+			if (!zfp_stream_set_execution(zstr, zfp_exec_omp))
+			{
+                H5Z_ZFP_PUSH_AND_GOTO(H5E_PLINE, H5E_CANTFILTER, 0, "failed to enable OpenMP with ZFP compression.");
+			}
+        }
 
         /* Do the compression */
         zsize = Z zfp_compress(zstr, zfld);
