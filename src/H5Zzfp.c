@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include "H5Zzfp_api.h"
 
 /*
 This code was based heavily on one of the HDF5 library's internal
@@ -100,17 +101,17 @@ const H5Z_class2_t H5Z_ZFP[1] = {{
 }};
 
 #ifdef H5Z_ZFP_AS_LIB
-void __declspec(dllexport) H5Z_zfp_enable_openmp(bool on)
+void H5ZFP_API H5Z_zfp_enable_openmp(bool on)
 {
     h5z_zfp_enable_openmp = on;
 }
 #else
-H5PL_type_t H5PLget_plugin_type(void) { return H5PL_TYPE_FILTER; }
-const void* H5PLget_plugin_info(void) { return H5Z_ZFP; }
+//H5PL_type_t H5PLget_plugin_type(void) { return H5PL_TYPE_FILTER; }
+//const void* H5PLget_plugin_info(void) { return H5Z_ZFP; }
 #endif
 
 #ifdef H5Z_ZFP_AS_LIB
-int __declspec(dllexport) H5Z_zfp_initialize(void)
+int H5ZFP_API H5Z_zfp_initialize(void)
 {
     if (H5Zfilter_avail(H5Z_FILTER_ZFP))
         return 1;
@@ -127,7 +128,7 @@ const void *H5PLget_plugin_info(void) {return H5Z_ZFP;}
 #ifndef H5Z_ZFP_AS_LIB
 static
 #endif
-int __declspec(dllexport) H5Z_zfp_finalize(void)
+int H5ZFP_API H5Z_zfp_finalize(void)
 {
     herr_t ret2 = 0;
     if (h5z_zfp_was_registered)

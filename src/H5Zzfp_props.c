@@ -1,5 +1,6 @@
 #include "H5Zzfp_plugin.h"
 #include "H5Zzfp_props_private.h"
+#include "H5Zzfp_api.h"
 
 #include "hdf5.h"
 
@@ -113,28 +114,28 @@ done:
     return retval;
 }
 
-herr_t __declspec(dllexport) H5Pset_zfp_rate(hid_t plist, double rate)
+herr_t H5ZFP_API H5Pset_zfp_rate(hid_t plist, double rate)
 {
     return H5Pset_zfp(plist, H5Z_ZFP_MODE_RATE, rate);
 }
 
-herr_t __declspec(dllexport) H5Pset_zfp_precision(hid_t plist, unsigned int prec)
+herr_t H5ZFP_API H5Pset_zfp_precision(hid_t plist, unsigned int prec)
 {
     return H5Pset_zfp(plist, H5Z_ZFP_MODE_PRECISION, prec);
 }
 
-herr_t __declspec(dllexport) H5Pset_zfp_accuracy(hid_t plist, double acc)
+herr_t H5ZFP_API H5Pset_zfp_accuracy(hid_t plist, double acc)
 {
     return H5Pset_zfp(plist, H5Z_ZFP_MODE_ACCURACY, acc);
 }
 
-herr_t __declspec(dllexport) H5Pset_zfp_expert(hid_t plist, unsigned int minbits, unsigned int maxbits,
+herr_t H5ZFP_API H5Pset_zfp_expert(hid_t plist, unsigned int minbits, unsigned int maxbits,
     unsigned int maxprec, int minexp)
 {
     return H5Pset_zfp(plist, H5Z_ZFP_MODE_EXPERT, minbits, maxbits, maxprec, minexp);
 }
 
-herr_t __declspec(dllexport) H5Pset_zfp_reversible(hid_t plist)
+herr_t H5ZFP_API H5Pset_zfp_reversible(hid_t plist)
 {
     return H5Pset_zfp(plist, H5Z_ZFP_MODE_REVERSIBLE);
 }
